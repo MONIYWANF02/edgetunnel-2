@@ -5,10 +5,8 @@ on:
     - cron: '0 */6 * * *'  # 每 6 小時自動同步一次
   workflow_dispatch:       # 支持手動按鈕觸發
 
-# ⚠️ 這裡就是解決 Exit code 1 的核心修復！
 permissions:
   contents: write
-  workflows: write
 
 jobs:
   sync:
@@ -28,8 +26,11 @@ jobs:
           git remote add upstream https://github.com/cmliu/edgetunnel.git
           git fetch upstream
           
-          # 2. 強制覆蓋本地內容
-          git reset --hard upstream/main
+          # 2. 將所有檔案替換成原作者最新版，但保留我們自己的 .github 資料夾（避開安全攔截）
+          git checkout upstream/main -- .
+          git checkout HEAD -- .github
           
-          # 3. 強制推送到你的 edgetunnel-2
-          git push origin main --force
+          # 3. 提交變更並推送到 edgetunnel-2
+          git add .
+          git diff-index --quiet HEAD || git commit -m "Chore: Auto sync code from upstream"
+          git push origin main
