@@ -2,8 +2,12 @@ name: Auto Sync from Upstream
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # 每 6 小時自動同步一次
-  workflow_dispatch: # 允許手動點擊觸發
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+# 明確聲明寫入權限，防止 Push 被阻擋
+permissions:
+  contents: write
 
 jobs:
   sync:
@@ -13,17 +17,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sync from upstream
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 設定同步來源（預設同步原作者 cmliu 的最新程式碼）
+          # 1. 新增原作者 cmliu 倉庫
           git remote add upstream https://github.com/cmliu/edgetunnel.git
-          git fetch upstream main
+          git fetch upstream
           
-          # 強制合併更新
-          git merge upstream/main --allow-unrelated-histories -m "Chore: Auto sync from upstream" || git checkout upstream/main -- .
+          # 2. 強制拉取 upstream/main 內容覆蓋本地，避免 Merge 衝突
+          git reset --hard upstream/main
           
-          git push origin main
+          # 3. 強制 Push 回你的倉庫
+          git push origin main --force
